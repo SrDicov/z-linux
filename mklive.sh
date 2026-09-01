@@ -312,11 +312,11 @@ EOF
         ENTRY_TITLE="${BOOT_TITLE} ${KERNELVERSION} ${title_sfx}(${TARGET_ARCH})"
 
         write_entry "${ENTRY_TITLE}" "linux${id_sfx}" \
-            "$BOOT_CMDLINE $cmdline" "$dtb"
+            "live.autologin $BOOT_CMDLINE $cmdline" "$dtb"
         write_entry "${ENTRY_TITLE} (RAM)" "linuxram${id_sfx}" \
-            "rd.live.ram $BOOT_CMDLINE $cmdline" "$dtb"
+            "live.autologin rd.live.ram $BOOT_CMDLINE $cmdline" "$dtb"
         write_entry "${ENTRY_TITLE} (graphics disabled)" "linuxnogfx${id_sfx}" \
-            "nomodeset $BOOT_CMDLINE $cmdline" "$dtb"
+            "live.autologin nomodeset $BOOT_CMDLINE $cmdline" "$dtb"
         write_entry "${ENTRY_TITLE} with speech" "linuxa11y${id_sfx}" \
             "live.accessibility live.autologin $BOOT_CMDLINE $cmdline" "$dtb" 's'
         write_entry "${ENTRY_TITLE} with speech (RAM)" "linuxa11yram${id_sfx}" \
