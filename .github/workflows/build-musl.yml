@@ -1,0 +1,52 @@
+name: Build Void Linux (musl)
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+      - main
+    paths-ignore:
+      - 'README.md'
+
+jobs:
+  build:
+    name: Build musl image
+    runs-on: ubuntu-latest
+    container:
+      image: 'ghcr.io/void-linux/void-mklive:20250116R1'
+      options: --privileged
+      volumes:
+        - /dev:/dev
+      env:
+        PATH: '/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/sbin:/usr/local/bin:/tmp/bin'
+
+    steps:
+      - name: Prepare container
+        shell: sh
+        run: xbps-install -Syu xbps && xbps-install -yu
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Cache XBPS packages
+        uses: actions/cache@v4
+        with:
+          path: xbps-cachedir-*
+          key: xbps-cache-musl-${{ github.run_id }}
+          restore-keys: |
+            xbps-cache-musl-
+
+      - name: Build live ISO
+        run: |
+          make live-iso-all \
+            SUDO= \
+            LIVE_ARCHS="x86_64-musl" \
+            LIVE_FLAVORS="base"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: void-musl-iso
+          path: void-live-*.iso
+          if-no-files-found: error
