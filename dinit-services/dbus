@@ -1,0 +1,5 @@
+type = process
+command = /usr/libexec/z-dbus.sh
+depends-on = early-fs
+restart = on-failure
+restart-delay = 3

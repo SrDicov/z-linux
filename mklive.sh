@@ -187,19 +187,18 @@ install_packages() {
 
 ignore_packages() {
 	mkdir -p "$ROOTFS"/etc/xbps.d
+    echo "ignorepkg=runit" >> "$ROOTFS"/etc/xbps.d/mklive-ignore.conf
+    echo "ignorepkg=runit-void" >> "$ROOTFS"/etc/xbps.d/mklive-ignore.conf
+    # libudev-zero (z-repo) replaces eudev's libudev; udevd itself lives in eudev.
+    echo "ignorepkg=eudev-libudev" >> "$ROOTFS"/etc/xbps.d/mklive-ignore.conf
 	for pkg in "${IGNORE_PKGS[@]}"; do
 		echo "ignorepkg=$pkg" >> "$ROOTFS"/etc/xbps.d/mklive-ignore.conf
 	done
 }
 
 enable_services() {
-    SERVICE_LIST="$*"
-    for service in $SERVICE_LIST; do
-        if ! [ -e $ROOTFS/etc/sv/$service ]; then
-            die "service $service not in /etc/sv"
-        fi
-        ln -sf /etc/sv/$service $ROOTFS/etc/runit/runsvdir/default/
-    done
+    # Services are managed via dinit-services copied to /etc/dinit.d
+    :
 }
 
 change_shell() {
@@ -455,48 +454,45 @@ generate_squashfs() {
     rm -rf "$ROOTFS" "$BUILDDIR/tmp-rootfs" "$BUILDDIR/tmp"
 }
 
+generate_limine_boot() {
+    mkdir -p "$IMAGEDIR/boot/limine"
+    cp -f "$VOIDTARGETDIR/usr/share/limine/limine-bios.sys" "$IMAGEDIR/boot/limine/" || true
+    cp -f "$VOIDTARGETDIR/usr/share/limine/limine-bios-cd.bin" "$IMAGEDIR/boot/limine/" || true
+    cp -f "$VOIDTARGETDIR/usr/share/limine/limine-uefi-cd.bin" "$IMAGEDIR/boot/limine/" || true
+
+    case "$TARGET_ARCH" in
+        i686*|x86_64*) KERNEL_IMG=vmlinuz ;;
+        aarch64*) KERNEL_IMG=vmlinux ;;
+    esac
+
+    local LIMINE_CMDLINE
+    LIMINE_CMDLINE="root=live:CDLABEL=VOID_LIVE ro init=/usr/bin/dinit"
+    LIMINE_CMDLINE+=" rd.luks=0 rd.md=0 rd.dm=0 loglevel=4 gpt add_efi_memmap"
+    LIMINE_CMDLINE+=" vconsole.unicode=1 vconsole.keymap=${KEYMAP} locale.LANG=${LOCALE}"
+    LIMINE_CMDLINE+=" live.autologin ${BOOT_CMDLINE}"
+
+    cat << EOF > "$IMAGEDIR/boot/limine/limine.conf"
+timeout: 3
+graphics: yes
+
+/Z Linux ($TARGET_ARCH)
+    protocol: linux
+    kernel_path: boot():/boot/${KERNEL_IMG}
+    module_path: boot():/boot/initrd
+    cmdline: ${LIMINE_CMDLINE}
+EOF
+}
+
 generate_iso_image() {
-    local bootloader n
-    XORRISO_ARGS=(
-        -iso-level 3 -rock -joliet -joliet-long -max-iso9660-filenames -omit-period
-        -omit-version-number -relaxed-filenames -allow-lowercase
-        -volid VOID_LIVE
-    )
-
-    if [ "$IMAGE_TYPE" = hybrid ]; then
-        XORRISO_ARGS+=(-isohybrid-mbr "$SYSLINUX_DATADIR"/isohdpfx.bin)
-    fi
-
-    n=1
-    for bootloader in "${BOOTLOADERS[@]}"; do
-        if (( n > 1 )); then
-            XORRISO_ARGS+=(-eltorito-alt-boot)
-        fi
-
-        case "${bootloader}" in
-            grub)
-                XORRISO_ARGS+=(
-                    -e boot/grub/efiboot.img -no-emul-boot
-                    -isohybrid-gpt-basdat -isohybrid-apm-hfsplus
-                )
-                ;;
-            syslinux)
-                XORRISO_ARGS+=(
-                    -eltorito-boot boot/isolinux/isolinux.bin
-                    -eltorito-catalog boot/isolinux/boot.cat
-                    -no-emul-boot -boot-load-size 4 -boot-info-table
-                )
-                ;;
-        esac
-
-        n=$(( n + 1 ))
-    done
-
-    XORRISO_ARGS+=(
-        -output "$OUTPUT_FILE" "$IMAGEDIR"
-    )
-
-    "$VOIDHOSTDIR"/usr/bin/xorriso -as mkisofs "${XORRISO_ARGS[@]}" || die "Failed to generate ISO image"
+    "$VOIDHOSTDIR"/usr/bin/xorriso -as mkisofs \
+        -b boot/limine/limine-bios-cd.bin \
+        -no-emul-boot -boot-load-size 4 -boot-info-table \
+        --efi-boot boot/limine/limine-uefi-cd.bin \
+        -efi-boot-part --efi-boot-image --protective-msdos-label \
+        -volid VOID_LIVE \
+        -o "$OUTPUT_FILE" "$IMAGEDIR" || die "Failed to generate ISO image"
+        
+    "$VOIDTARGETDIR"/usr/bin/limine bios-install "$OUTPUT_FILE" || true
 }
 
 #
@@ -554,15 +550,15 @@ XBPS_TARGET_ARCH="$TARGET_ARCH" register_binfmt
 
 case "$TARGET_ARCH" in
 	x86_64*|i686*)
-		BOOTLOADERS=(syslinux grub)
+		BOOTLOADERS=(limine)
 		IMAGE_TYPE='hybrid'
-		TARGET_PKGS+=(syslinux grub-i386-efi grub-x86_64-efi memtest86+)
+		TARGET_PKGS+=(limine memtest86+)
         PLATFORMS=() # arm only
 		;;
 	aarch64*)
-		BOOTLOADERS=(grub)
+		BOOTLOADERS=(limine)
 		IMAGE_TYPE='efi'
-		TARGET_PKGS+=(grub-arm64-efi)
+		TARGET_PKGS+=(limine)
         for platform in "${PLATFORMS[@]}"; do
             if [ -r "platforms/${platform}.sh" ]; then
                 . "platforms/${platform}.sh"
@@ -678,10 +674,8 @@ mkdir -p "$ROOTFS"/etc
 [ -s data/motd ] && cp data/motd "$ROOTFS"/etc
 [ -s data/issue ] && cp data/issue "$ROOTFS"/etc
 
-if [ "${#IGNORE_PKGS[@]}" -gt 0 ]; then
-	print_step "Ignoring packages in the rootfs: ${IGNORE_PKGS[*]} ..."
-	ignore_packages
-fi
+print_step "Setting up virtual packages and ignores..."
+ignore_packages
 
 print_step "Installing void pkgs into the rootfs: ${PACKAGE_LIST[*]} ..."
 install_packages
@@ -712,13 +706,8 @@ fi
 print_step "Generating initramfs image ($INITRAMFS_COMPRESSION)..."
 generate_initramfs
 
-if [ "$IMAGE_TYPE" = hybrid ]; then
-    print_step "Generating isolinux support for PC-BIOS systems..."
-    generate_isolinux_boot
-fi
-
-print_step "Generating GRUB support for EFI systems..."
-generate_grub_efi_boot
+print_step "Generating Limine support for BIOS/EFI systems..."
+generate_limine_boot
 
 print_step "Cleaning up rootfs..."
 cleanup_rootfs

@@ -53,5 +53,9 @@ _EOF
 fi
 
 if getargbool 0 live.autologin; then
-        sed -i "s,GETTY_ARGS=\"--noclear\",GETTY_ARGS=\"--noclear -a $USERNAME\",g" ${NEWROOT}/etc/sv/agetty-tty1/conf
+    if [ -f "${NEWROOT}/etc/dinit.d/agetty-tty1" ]; then
+        sed -i "s/-a anon/-a $USERNAME/g" "${NEWROOT}/etc/dinit.d/agetty-tty1"
+    elif [ -f "${NEWROOT}/etc/sv/agetty-tty1/conf" ]; then
+        sed -i "s,GETTY_ARGS=\"--noclear\",GETTY_ARGS=\"--noclear -a $USERNAME\",g" "${NEWROOT}/etc/sv/agetty-tty1/conf"
+    fi
 fi

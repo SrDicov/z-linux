@@ -1,0 +1,5 @@
+type = process
+command = /usr/bin/seatd -g video
+depends-on = mdevd
+restart = on-failure
+restart-delay = 3

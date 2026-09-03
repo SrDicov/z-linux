@@ -1,0 +1,5 @@
+type = process
+command = /sbin/agetty --noclear -a anon tty1 linux
+waits-for = mdevd-coldplug
+# Respawn after logout, like runit did.
+restart = yes

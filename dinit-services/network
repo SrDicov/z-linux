@@ -1,0 +1,8 @@
+type = process
+command = /usr/libexec/iwd
+depends-on = local-fs
+depends-on = dbus
+restart = on-failure
+restart-delay = 5
+restart-limit-count = 8
+restart-limit-interval = 120
