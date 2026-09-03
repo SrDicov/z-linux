@@ -1,0 +1,5 @@
+type = process
+command = /usr/libexec/z-sshd.sh
+depends-on = network
+restart = on-failure
+restart-delay = 5

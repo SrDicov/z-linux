@@ -1,0 +1,5 @@
+type = process
+command = /sbin/agetty -L ttyS0 115200 vt100
+waits-for = mdevd-coldplug
+# Respawn after logout, like runit did.
+restart = yes

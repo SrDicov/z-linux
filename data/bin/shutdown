@@ -1,0 +1,11 @@
+#!/bin/sh
+# Minimal shutdown wrapper: accepts the usual "shutdown [-r] now [msg]" forms
+# and maps them onto dinit-shutdown (which stops services and powers off).
+args=""
+for a in "$@"; do
+    case "$a" in
+        -r|--reboot) args="$args -r" ;;
+        -h|--halt)   args="$args -h" ;;
+    esac
+done
+exec /usr/bin/dinit-shutdown $args

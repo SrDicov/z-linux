@@ -1,0 +1,5 @@
+type = process
+command = /usr/libexec/z-dhcpcd.sh
+waits-for = mdevd-coldplug
+restart = on-failure
+restart-delay = 5

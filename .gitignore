@@ -16,3 +16,5 @@ release/
 packer/cloud-*/
 packer/vagrant-*/
 mklive-build*/
+BASURATEMPORAL/
+vm-debug.log
