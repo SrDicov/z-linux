@@ -1,0 +1,3 @@
+#!/bin/sh
+# dinit-aware reboot: roll back services, then restart the system.
+exec /usr/bin/dinit-shutdown -r

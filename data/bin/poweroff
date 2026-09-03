@@ -1,0 +1,3 @@
+#!/bin/sh
+# dinit-aware poweroff: roll back services, then power the system off.
+exec /usr/bin/dinit-shutdown
