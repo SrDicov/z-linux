@@ -1,0 +1,43 @@
+#!/bin/sh
+# Z Linux - autotest de la sesion Wayland (fase 1).
+# Ejecutado por el config de swayfx; escribe resultados en
+# /tmp/z-session-selftest.log para verificar via consola serial.
+(
+    sleep 4
+    echo "=== z-session-selftest $(date -u +%FT%TZ) ==="
+    echo "user=$(id -un) uid=$(id -u)"
+    echo "WAYLAND_DISPLAY=${WAYLAND_DISPLAY:-unset} XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-unset} XDG_CURRENT_DESKTOP=${XDG_CURRENT_DESKTOP:-unset}"
+    echo "--- sockets de sesion ---"
+    ls "$XDG_RUNTIME_DIR" 2>/dev/null | sort | head -20
+    echo "--- compositor ---"
+    if command -v swayfx >/dev/null 2>&1; then swayfx --version 2>&1 | head -2
+    elif command -v sway >/dev/null 2>&1; then sway --version 2>&1 | head -2
+    else echo "SIN COMPOSITOR"; fi
+    echo "--- ipc ---"
+    if command -v swaymsg >/dev/null 2>&1; then
+        swaymsg -t get_outputs 2>&1 | grep -E '"(name|make|model)"' | head -8
+        swaymsg -t get_seats 2>&1 | grep '"name"' | head -3
+    else
+        echo "swaymsg no disponible"
+    fi
+    echo "--- binarios ---"
+    for b in sway swaymsg foot fuzzel swaylock grim slurp wl-copy cliphist \
+             wtype wf-recorder wlsunset kanshi mako chromium \
+             quickshell btop fastfetch dbus-update-activation-environment; do
+        command -v "$b" >/dev/null 2>&1 && echo "ok $b" || echo "MISSING $b"
+    done
+    # El agente polkit vive fuera del PATH.
+    [ -x /usr/libexec/polkit-mate-authentication-agent-1 ] \
+        && echo "ok polkit-mate-agent" || echo "MISSING polkit-mate-agent"
+    echo "--- procesos de sesion ---"
+    # Dejar respirar a los autostarts (el agente polkit llega tarde).
+    sleep 3
+    # pgrep -x trunca nombres a 15 chars; usar -f para los largos.
+    # Nota: el agente polkit sale si no hay sesion logind/elogind; en el live
+    # es irrelevante (las reglas de wheel en /etc/polkit-1/rules.d autoriczan).
+    for p in pipewire wireplumber xdg-desktop-portal xdg-desktop-portal-wlr \
+             polkit-mate-authentication-agent-1 mako; do
+        pgrep -f "$p" >/dev/null 2>&1 && echo "ok $p" || echo "sin $p"
+    done
+    echo "--- fin ---"
+) >/tmp/z-session-selftest.log 2>&1 &

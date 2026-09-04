@@ -14,7 +14,7 @@ T_PXE_ARCHS=x86_64{,-musl}
 T_WSL_ARCHS={x86_64,aarch64}{,-musl}
 
 LIVE_ARCHS:=$(shell echo $(T_LIVE_ARCHS))
-LIVE_FLAVORS:=base enlightenment xfce mate cinnamon gnome kde lxde lxqt xfce-wayland
+LIVE_FLAVORS:=base enlightenment xfce mate cinnamon gnome kde lxde lxqt xfce-wayland omarchy
 LIVE_PLATFORMS:=pinebookpro x13s
 ARCHS:=$(shell echo $(T_ARCHS))
 PLATFORMS:=$(shell echo $(T_PLATFORMS))

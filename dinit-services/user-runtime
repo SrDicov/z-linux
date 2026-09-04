@@ -1,0 +1,3 @@
+type = scripted
+command = /usr/libexec/z-user-runtime.sh
+waits-for = early-fs
