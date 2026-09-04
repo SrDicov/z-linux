@@ -1,0 +1,56 @@
+# Z Linux - sesion minima de swayfx (fase 1, se sustituye por omarchy dotfiles)
+set $mod Mod4
+set $term foot
+set $menu fuzzel
+
+### Lanzadores
+bindsym $mod+Return exec $term
+bindsym $mod+d exec $menu
+bindsym $mod+b exec chromium
+bindsym $mod+Shift+x exec swaylock
+
+### Ventanas
+bindsym $mod+q kill
+bindsym $mod+Shift+c reload
+bindsym $mod+Shift+e exec swaymsg exit
+bindsym $mod+Left focus left
+bindsym $mod+Down focus down
+bindsym $mod+Up focus up
+bindsym $mod+Right focus right
+bindsym $mod+Shift+Left move left
+bindsym $mod+Shift+Down move down
+bindsym $mod+Shift+Up move up
+bindsym $mod+Shift+Right move right
+bindsym $mod+f fullscreen toggle
+bindsym $mod+v splith
+bindsym $mod+h splitv
+bindsym $mod+space floating toggle
+
+### Capturas
+bindsym Print exec grim /tmp/z-screenshot.png
+bindsym $mod+Print exec sh -c 'grim -g "$(slurp)" /tmp/z-screenshot-region.png'
+
+### Multimedia y brillo
+bindsym XF86AudioRaiseVolume exec pamixer -i 5
+bindsym XF86AudioLowerVolume exec pamixer -d 5
+bindsym XF86AudioMute exec pamixer -t
+bindsym XF86AudioPlay exec playerctl play-pause
+bindsym XF86AudioNext exec playerctl next
+bindsym XF86AudioPrev exec playerctl previous
+bindsym XF86MonBrightnessUp exec brightnessctl set +5%
+bindsym XF86MonBrightnessDown exec brightnessctl set 5-
+
+### Barra (temporal; fase 2 trae quickshell)
+bar {
+    position top
+    status_command while date +'%a %d %b  %H:%M'; do sleep 30; done
+}
+
+### Entorno y servicios de sesion
+exec dbus-update-activation-environment --all
+exec pipewire
+exec /usr/libexec/xdg-desktop-portal-wlr
+exec /usr/libexec/xdg-desktop-portal
+exec /usr/libexec/polkit-mate-authentication-agent-1
+exec mako
+exec /usr/libexec/z-session-selftest

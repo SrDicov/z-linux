@@ -21,7 +21,7 @@ usage() {
 	OPTIONS
 	 -a <arch>     Set architecture (or platform) in the image
 	 -b <variant>  One of base, enlightenment, xfce, mate, cinnamon, gnome, kde,
-	               lxde, lxqt, or xfce-wayland (default: base). May be specified multiple times
+	               lxde, lxqt, xfce-wayland, or omarchy (default: base). May be specified multiple times
 	               to build multiple variants
 	 -d <date>     Override the datestamp on the generated image (YYYYMMDD format)
 	 -t <arch-date-variant>
@@ -180,6 +180,23 @@ build_variant() {
         lxqt)
             PKGS="$PKGS $XORG_PKGS lxqt sddm gvfs-afc gvfs-mtp gvfs-smb udisks2 firefox"
         ;;
+        omarchy)
+            # Z Linux desktop flavor: swayfx + omarchy-style Wayland stack.
+            # The session is launched from the tty1 autologin via the skel
+            # .bash_profile; no display manager. Extra packages for installed
+            # systems (sddm, cups, ufw, python3, nodejs, vary, librewolf...)
+            # land in a later phase together with installer integration.
+            PKGS="$PKGS $WAYLAND_PKGS \
+                swayfx quickshell fuzzel foot xorg-server-xwayland \
+                grim slurp swappy wl-clipboard cliphist wtype wf-recorder wlsunset \
+                swaylock swayidle kanshi mako libnotify \
+                xdg-desktop-portal-wlr xdg-desktop-portal-gtk mate-polkit xdg-user-dirs \
+                wireplumber rtkit brightnessctl pamixer playerctl power-profiles-daemon \
+                git neovim tmux jq gum fzf ripgrep fd eza bat zoxide starship \
+                btop fastfetch lazygit chromium \
+                mpv imv ffmpegthumbnailer libvips papirus-icon-theme nwg-look \
+                nerd-fonts-symbols-ttf noto-fonts-emoji"
+        ;;
         *)
             >&2 echo "Unknown variant $variant"
             exit 1
@@ -206,6 +223,14 @@ EOF
 
     if [ "$variant" != base ]; then
         setup_pipewire
+    fi
+
+    if [ "$variant" = omarchy ]; then
+        # Desktop session files: skel (tty1 autologin launches the compositor)
+        # and the session self-test helper.
+        mkdir -p "$INCLUDEDIR"/etc/skel "$INCLUDEDIR"/usr/libexec
+        cp -a desktops/omarchy/skel/. "$INCLUDEDIR"/etc/skel/
+        install -m755 -t "$INCLUDEDIR"/usr/libexec/ desktops/omarchy/libexec/*
     fi
 
     mkdir -p "$INCLUDEDIR"/etc/dinit.d
